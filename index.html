@@ -15,13 +15,27 @@
         :focus-visible{outline:3px solid rgba(6,182,212,0.45);outline-offset:3px;border-radius:6px}
 
         :root{
-            --bg:#0f1724; --card:#0b1220; --muted:#9aa6b2;
+            /* Default dark theme variables adjusted for WCAG contrast */
+            --bg:#041426; /* page background */
+            --card:#071428; /* card / panel background */
+            --muted:#c3d6df; /* secondary text (increased contrast) */
             /* accent used across UI (text, borders) */
             --accent:#06b6d4;
             /* primary button gradient colors (themeable) */
             --btn-start:#06b6d4; --btn-end:#3b82f6;
-            --glass: rgba(255,255,255,0.03);
+            --glass: rgba(255,255,255,0.04);
             --success:#10b981; --danger:#ef4444; --maxw:1200px;
+        }
+
+        /* High contrast mode (opt-in) */
+        .high-contrast{
+            --bg: #000000;
+            --card: #111111;
+            --muted: #ffffff;
+            --accent: #ffd166;
+            --btn-start: #ffd166;
+            --btn-end: #ff9f1c;
+            --glass: rgba(255,255,255,0.06);
         }
         *{box-sizing:border-box}
         html,body{height:100%}
@@ -148,6 +162,7 @@
                 </div>
 
                 <button class="btn" id="dashboardBtn">Dashboard</button>
+                <button class="btn" id="hcToggle" aria-pressed="false" aria-label="Toggle high contrast">High Contrast</button>
                 <button class="btn" id="cartBtn" aria-controls="drawerCart" aria-expanded="false">Cart (<span id="cartCount" aria-live="polite">0</span>)</button>
                 <button class="primary" id="authBtn" aria-haspopup="dialog">Login</button>
             </div>
@@ -458,6 +473,7 @@
             renderMiniChart();
             attachEvents();
             setupThemeControls();
+            initHighContrast();
         }
 
         // Apply saved theme or default
@@ -487,6 +503,20 @@
             // ensure current saved theme is marked
             const saved = localStorage.getItem('shop_theme') || 'blue';
             document.querySelectorAll('.theme-btn').forEach(b=>{ b.classList.toggle('sel', b.dataset.theme===saved); b.setAttribute('aria-pressed', b.dataset.theme===saved ? 'true' : 'false'); });
+        }
+
+        // High contrast toggle
+        const hcToggle = $('hcToggle');
+        function applyHighContrast(enabled){
+            if(enabled){ document.documentElement.classList.add('high-contrast'); hcToggle.setAttribute('aria-pressed','true'); }
+            else { document.documentElement.classList.remove('high-contrast'); hcToggle.setAttribute('aria-pressed','false'); }
+            localStorage.setItem('shop_hc', enabled ? '1' : '0');
+        }
+        function initHighContrast(){
+            const saved = localStorage.getItem('shop_hc');
+            applyHighContrast(saved === '1');
+            hcToggle.addEventListener('click', ()=> applyHighContrast(!(localStorage.getItem('shop_hc')==='1')) );
+            hcToggle.addEventListener('keydown', e=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); applyHighContrast(!(localStorage.getItem('shop_hc')==='1')); } });
         }
 
         // Render product cards
@@ -556,9 +586,8 @@
             if(mSizes.firstChild) selectSize(mSizes.firstChild, sizes[0]);
             // stock
             updateStockDisplay();
-            // show modal
-            modalBack.style.display = 'flex';
-            setTimeout(()=>modalBack.querySelector('.modal').classList.add('show'),10);
+            // show modal (accessible)
+            showOverlay(modalBack);
         }
 
         function selectSize(el, sz){
@@ -588,7 +617,7 @@
             if(qty<1){ alert('Quantity must be at least 1'); return; }
             if(qty>max){ alert('Not enough stock'); return; }
             addToCart(currentProduct.id, size, qty);
-            modalBack.style.display = 'none';
+            hideOverlay(modalBack);
         }
 
         function addToCart(pid, size, qty){
